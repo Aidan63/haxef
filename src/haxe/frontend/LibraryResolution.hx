@@ -1,10 +1,9 @@
 package haxe.frontend;
 
+import json2object.JsonParser;
 import asys.native.IoException;
 import asys.native.filesystem.FileSystem;
-import haxe.exceptions.NotImplementedException;
 import asys.native.filesystem.FilePath;
-import haxe.frontend.LockFile.Library;
 
 using StringTools;
 
@@ -81,26 +80,58 @@ class LibraryResolution {
         replaceVariable(toSearch.name(), replaceResult);
     }
 
+    static function haxelibToDependency(folder:FilePath, cb:Callback<Dependency>) {
+        FileSystem.readString(folder.add('haxelib.json'), (data, error) -> {
+            switch error {
+                case null:
+                    final parser = new JsonParser<Haxelib>();
+                    final json   = parser.fromJson(data);
+
+                    cb.success(new Dependency(folder.add(json.classPath), json.version, [], ''));
+                case exn:
+                    cb.fail(exn);
+            }
+        });
+    }
+
+    static function resolveHaxelib(haxelib:FilePath, name:String, cb:Callback<Dependency>) {
+        // haxelib fallback resolution
+        // - use the path in ${haxelib}/name/.dev if it exists
+        // - else use the path in ${haxelib}/name/.current
+        // - read the haxelib.json for dependencies
+
+        FileSystem.readString(haxelib.add(name).add('.dev'), (devPath, error) -> {
+            switch error {
+                case null:
+                    haxelibToDependency(devPath, cb);
+                case exn:
+                    if (Std.isOfType(exn, IoException) && (cast exn:IoException).type.match(FileNotFound)) {
+                        FileSystem.readString(haxelib.add(name).add('.current'), (currentVersion, error) -> {
+                            switch error {
+                                case null:
+                                    haxelibToDependency(haxelib.add(name).add(currentVersion), cb);
+                                case exn:
+                                    if (Std.isOfType(exn, IoException) && (cast exn:IoException).type.match(FileNotFound)) {
+                                        cb.fail(new Exception('Failed to find .dev or .current file for "$name" haxelib', exn));
+                                    } else {
+                                        cb.fail(exn);
+                                    }
+                            }
+                        });
+                    } else {
+                        cb.fail(exn);
+                    }
+            }
+        });
+    }
+
     public static function resolve(lockfile:LockFile, name:String, cb:Callback<Dependency>) {
         switch lockfile[name] {
             case null:
                 Paths.getHaxelibLocation((path, error) -> {
                     switch error {
                         case null:
-                            FileSystem.readString(path.add(name).add('.dev'), (devPath, error) -> {
-                                switch error {
-                                    case null:
-                                        trace(devPath);
-
-                                        cb.fail(new NotImplementedException());
-                                    case exn:
-                                        if (Std.isOfType(exn, IoException) && (cast exn:IoException).type.match(FileNotFound)) {
-                                            //
-                                        } else {
-                                            cb.fail(exn);
-                                        }
-                                }
-                            });
+                            resolveHaxelib(path, name, cb);
                         case exn:
                             cb.fail(exn);
                     }
@@ -109,9 +140,7 @@ class LibraryResolution {
                 resolvePath(found.path, (path, error) -> {
                     switch error {
                         case null:
-                            trace(path);
-        
-                            cb.fail(new NotImplementedException());
+                            cb.success(new Dependency(path, '0.0.1', [], ''));
                         case exn:
                             cb.fail(exn);
                     }
