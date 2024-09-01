@@ -1,0 +1,6 @@
+-cp src
+-D analyzer-optimize
+-L hxcpp_asys
+-L json2object
+-main Main
+--cpp bin
