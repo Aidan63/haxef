@@ -5,10 +5,10 @@ class Main {
 		Container.populate(Sys.getCwd(), null, (container, error) -> {
 			switch error {
 				case null:
-					container.resolve('baz', (dependency, error) -> {
+					container.resolve('foo', (dependency, error) -> {
 						switch error {
 							case null:
-								trace(dependency.path);
+								trace(dependency.path, dependency.dependencies);
 							case exn:
 								throw exn;
 						}

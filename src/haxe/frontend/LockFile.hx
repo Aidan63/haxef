@@ -25,6 +25,7 @@ class Library {
     @:jcustomparse(haxe.frontend.LockFile.Library.parsePath)
     public var path : FilePath;
 
+    @:default(new Array<String>())
     public var dependencies : Array<String>;
 
     public static function parsePath(val:hxjsonast.Json, name:String) {

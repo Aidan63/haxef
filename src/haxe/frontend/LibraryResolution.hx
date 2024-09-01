@@ -84,10 +84,11 @@ class LibraryResolution {
         FileSystem.readString(folder.add('haxelib.json'), (data, error) -> {
             switch error {
                 case null:
-                    final parser = new JsonParser<Haxelib>();
-                    final json   = parser.fromJson(data);
+                    final parser       = new JsonParser<Haxelib>();
+                    final json         = parser.fromJson(data);
+                    final dependencies = [];
 
-                    cb.success(new Dependency(folder.add(json.classPath), json.version, [], ''));
+                    cb.success(new Dependency(folder.add(json.classPath), json.version, dependencies, ''));
                 case exn:
                     cb.fail(exn);
             }
@@ -140,7 +141,28 @@ class LibraryResolution {
                 resolvePath(found.path, (path, error) -> {
                     switch error {
                         case null:
-                            cb.success(new Dependency(path, '0.0.1', [], ''));
+                            final dependencies = [];
+                            final toResolve    = found.dependencies.copy();
+
+                            function resolveNext() {
+                                switch toResolve.shift() {
+                                    case null:
+                                        cb.success(new Dependency(path, '0.0.1', dependencies, ''));
+                                    case next:
+                                        resolve(lockfile, next, (dependency, error) -> {
+                                            switch error {
+                                                case null:
+                                                    dependencies.push(dependency);
+
+                                                    resolveNext();
+                                                case exn:
+                                                    cb.fail(exn);
+                                            }
+                                        });
+                                }
+                            }
+
+                            resolveNext();
                         case exn:
                             cb.fail(exn);
                     }
