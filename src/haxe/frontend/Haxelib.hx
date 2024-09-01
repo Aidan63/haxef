@@ -1,12 +1,15 @@
 package haxe.frontend;
 
+import asys.native.filesystem.FilePath;
 import haxe.parsers.Version;
 
 class Haxelib {
     @:jcustomparse(haxe.frontend.LockFile.Library.parseVersion)
     public var version:Version;
 
-    public var classPath:String;
+    @:jcustomparse(haxe.frontend.LockFile.Library.parsePath)
+    public var classPath:FilePath;
 
-    public var depdendencies:Map<String, String>;
+    @:default(new Map<String, String>())
+    public var dependencies:Map<String, String>;
 }

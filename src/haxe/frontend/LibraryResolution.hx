@@ -6,6 +6,7 @@ import asys.native.filesystem.FileSystem;
 import asys.native.filesystem.FilePath;
 
 using StringTools;
+using Lambda;
 
 class LibraryResolution {
     static function replaceVariable(name:String, cb:Callback<FilePath>) {
@@ -80,22 +81,41 @@ class LibraryResolution {
         replaceVariable(toSearch.name(), replaceResult);
     }
 
-    static function haxelibToDependency(folder:FilePath, cb:Callback<Dependency>) {
+    static function haxelibToDependency(lockfile:LockFile, folder:FilePath, cb:Callback<Dependency>) {
         FileSystem.readString(folder.add('haxelib.json'), (data, error) -> {
             switch error {
                 case null:
                     final parser       = new JsonParser<Haxelib>();
                     final json         = parser.fromJson(data);
                     final dependencies = [];
+                    final toResolve    = [ for (name in json.dependencies.keys()) name ];
 
-                    cb.success(new Dependency(folder.add(json.classPath), json.version, dependencies, ''));
+                    function resolveNext() {
+                        switch toResolve.shift() {
+                            case null:
+                                cb.success(new Dependency(folder.add(json.classPath), json.version, dependencies, ''));
+                            case next:
+                                resolve(lockfile, next, (dependency, error) -> {
+                                    switch error {
+                                        case null:
+                                            dependencies.push(dependency);
+
+                                            resolveNext();
+                                        case exn:
+                                            cb.fail(exn);
+                                    }
+                                });
+                        }
+                    }
+
+                    resolveNext();
                 case exn:
                     cb.fail(exn);
             }
         });
     }
 
-    static function resolveHaxelib(haxelib:FilePath, name:String, cb:Callback<Dependency>) {
+    static function resolveHaxelib(lockfile:LockFile, haxelib:FilePath, name:String, cb:Callback<Dependency>) {
         // haxelib fallback resolution
         // - use the path in ${haxelib}/name/.dev if it exists
         // - else use the path in ${haxelib}/name/.current
@@ -104,13 +124,13 @@ class LibraryResolution {
         FileSystem.readString(haxelib.add(name).add('.dev'), (devPath, error) -> {
             switch error {
                 case null:
-                    haxelibToDependency(devPath, cb);
+                    haxelibToDependency(lockfile, devPath, cb);
                 case exn:
                     if (Std.isOfType(exn, IoException) && (cast exn:IoException).type.match(FileNotFound)) {
                         FileSystem.readString(haxelib.add(name).add('.current'), (currentVersion, error) -> {
                             switch error {
                                 case null:
-                                    haxelibToDependency(haxelib.add(name).add(currentVersion), cb);
+                                    haxelibToDependency(lockfile, haxelib.add(name).add(currentVersion), cb);
                                 case exn:
                                     if (Std.isOfType(exn, IoException) && (cast exn:IoException).type.match(FileNotFound)) {
                                         cb.fail(new Exception('Failed to find .dev or .current file for "$name" haxelib', exn));
@@ -132,7 +152,7 @@ class LibraryResolution {
                 Paths.getHaxelibLocation((path, error) -> {
                     switch error {
                         case null:
-                            resolveHaxelib(path, name, cb);
+                            resolveHaxelib(lockfile, path, name, cb);
                         case exn:
                             cb.fail(exn);
                     }
