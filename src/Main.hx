@@ -1,4 +1,4 @@
-import haxe.fontend.Container;
+import haxe.frontend.Container;
 
 class Main {
 	static function main() {

@@ -1,8 +1,11 @@
-package haxe.fontend;
+package haxe.frontend;
 
 import json2object.JsonParser;
 import asys.native.filesystem.FileSystem;
 import asys.native.filesystem.FilePath;
+import haxe.frontend.LockFile;
+
+using haxe.frontend.LibraryResolution;
 
 class Container {
     static final parser = new JsonParser<LockFile>();
@@ -87,11 +90,6 @@ class Container {
     }
 
     public function resolve(name:String, cb:Callback<Dependency>) {
-        switch lockfile[name] {
-            case null:
-                // haxelib lookup
-            case found:
-                LibraryResolution.resolve(found, cb);
-        }
+        lockfile.resolve(name, cb);
     }
 }

@@ -1,4 +1,4 @@
-package haxe.fontend;
+package haxe.frontend;
 
 import asys.native.filesystem.FileSystem;
 import asys.native.filesystem.FilePath;

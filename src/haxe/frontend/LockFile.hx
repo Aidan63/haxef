@@ -1,4 +1,4 @@
-package haxe.fontend;
+package haxe.frontend;
 
 import asys.native.filesystem.FilePath;
 
@@ -19,10 +19,10 @@ class Version {
 }
 
 class Library {
-    @:jcustomparse(haxe.fontend.LockFile.Library.parseVersion)
+    @:jcustomparse(haxe.frontend.LockFile.Library.parseVersion)
     public var version : Version;
 
-    @:jcustomparse(haxe.fontend.LockFile.Library.parsePath)
+    @:jcustomparse(haxe.frontend.LockFile.Library.parsePath)
     public var path : FilePath;
 
     public var dependencies : Array<String>;

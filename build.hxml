@@ -1,5 +1,6 @@
 -cp src
 -D analyzer-optimize
+-D HAXE_OUTPUT_FILE=haxef
 -L hxcpp_asys
 -L json2object
 -main Main

@@ -1,8 +1,10 @@
-package haxe.fontend;
+package haxe.frontend;
 
+import asys.native.IoException;
+import asys.native.filesystem.FileSystem;
 import haxe.exceptions.NotImplementedException;
 import asys.native.filesystem.FilePath;
-import haxe.fontend.LockFile.Library;
+import haxe.frontend.LockFile.Library;
 
 using StringTools;
 
@@ -75,21 +77,45 @@ class LibraryResolution {
                     cb.fail(exn);
             }
         }
-
         
         replaceVariable(toSearch.name(), replaceResult);
     }
 
-    public static function resolve(lib:Library, cb:Callback<Dependency>) {
-        resolvePath(lib.path, (path, error) -> {
-            switch error {
-                case null:
-                    trace(path);
+    public static function resolve(lockfile:LockFile, name:String, cb:Callback<Dependency>) {
+        switch lockfile[name] {
+            case null:
+                Paths.getHaxelibLocation((path, error) -> {
+                    switch error {
+                        case null:
+                            FileSystem.readString(path.add(name).add('.dev'), (devPath, error) -> {
+                                switch error {
+                                    case null:
+                                        trace(devPath);
 
-                    cb.fail(new NotImplementedException());
-                case exn:
-                    cb.fail(exn);
-            }
-        });
+                                        cb.fail(new NotImplementedException());
+                                    case exn:
+                                        if (Std.isOfType(exn, IoException) && (cast exn:IoException).type.match(FileNotFound)) {
+                                            //
+                                        } else {
+                                            cb.fail(exn);
+                                        }
+                                }
+                            });
+                        case exn:
+                            cb.fail(exn);
+                    }
+                });
+            case found:
+                resolvePath(found.path, (path, error) -> {
+                    switch error {
+                        case null:
+                            trace(path);
+        
+                            cb.fail(new NotImplementedException());
+                        case exn:
+                            cb.fail(exn);
+                    }
+                });
+        }
     }
 }
