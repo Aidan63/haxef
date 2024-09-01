@@ -1,22 +1,9 @@
 package haxe.frontend;
 
 import asys.native.filesystem.FilePath;
+import haxe.parsers.Version;
 
 typedef LockFile = Map<String, Library>;
-
-class Version {
-    public final major : Int;
-
-    public final minor : Int;
-
-    public final patch : Int;
-
-    public function new(major, minor, patch) {
-        this.major = major;
-        this.minor = minor;
-        this.patch = patch;
-    }
-}
 
 class Library {
     @:jcustomparse(haxe.frontend.LockFile.Library.parseVersion)
@@ -40,7 +27,7 @@ class Library {
     public static function parseVersion(val:hxjsonast.Json, name:String) {
         return switch val.value {
             case JString(s):
-                return new Version(1, 0, 0);
+                Version.fromString(s);
             case _:
                 throw new Exception('Failed to parse file path');
         }

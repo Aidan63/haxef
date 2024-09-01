@@ -1,7 +1,10 @@
 package haxe.frontend;
 
+import haxe.parsers.Version;
+
 class Haxelib {
-    public var version:String;
+    @:jcustomparse(haxe.frontend.LockFile.Library.parseVersion)
+    public var version:Version;
 
     public var classPath:String;
 

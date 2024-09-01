@@ -1,11 +1,12 @@
 package haxe.frontend;
 
+import haxe.parsers.Version;
 import asys.native.filesystem.FilePath;
 
 class Dependency {
     public final path:FilePath;
 
-    public final version:String;
+    public final version:Version;
 
     public final dependencies:Array<Dependency>;
 

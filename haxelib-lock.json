@@ -7,6 +7,6 @@
     "bar": {
       "version": "1.5.3",
       "path": "${haxelib}/bar/1.5.3",
-      "dependencies": []
+      "dependencies": [  ]
     }
 }

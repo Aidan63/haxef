@@ -147,7 +147,7 @@ class LibraryResolution {
                             function resolveNext() {
                                 switch toResolve.shift() {
                                     case null:
-                                        cb.success(new Dependency(path, '0.0.1', dependencies, ''));
+                                        cb.success(new Dependency(path, found.version, dependencies, ''));
                                     case next:
                                         resolve(lockfile, next, (dependency, error) -> {
                                             switch error {

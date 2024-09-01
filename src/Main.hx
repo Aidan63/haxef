@@ -1,3 +1,4 @@
+import haxe.parsers.Version;
 import haxe.frontend.Container;
 
 class Main {
@@ -8,7 +9,7 @@ class Main {
 					container.resolve('foo', (dependency, error) -> {
 						switch error {
 							case null:
-								trace(dependency.path, dependency.dependencies);
+								trace(dependency.path, dependency.version, dependency.dependencies);
 							case exn:
 								throw exn;
 						}
