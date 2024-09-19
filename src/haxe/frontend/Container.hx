@@ -1,8 +1,10 @@
 package haxe.frontend;
 
+import haxe.io.Bytes;
 import json2object.JsonParser;
 import asys.native.filesystem.FileSystem;
 import asys.native.filesystem.FilePath;
+import asys.native.system.Process;
 import haxe.frontend.LockFile;
 
 using haxe.frontend.LibraryResolution;
@@ -91,5 +93,77 @@ class Container {
 
     public function resolve(name:String, cb:Callback<Dependency>) {
         lockfile.resolve(name, cb);
+    }
+
+    public function compiler(cb:Callback<Compiler>) {
+        switch lockfile['haxec'] {
+            case null:
+                switch Sys.getEnv('HAXEC_PATH') {
+                    case null:
+                        find((path, error) -> {
+                            switch error {
+                                case null:
+                                    cb.success(new Compiler(None, path));
+                                case exn:
+                                    cb.fail(exn);
+                            }
+                        });
+                    case path:
+                        cb.success(new Compiler(None, path));
+                }
+            case found:
+                LibraryResolution.resolvePath(found.path, (resolved, error) -> {
+                    switch error {
+                        case null:
+                            cb.success(new Compiler(Some(found.version), resolved));
+                        case exn:
+                            cb.fail(exn);
+                    }
+                });
+        }
+    }
+
+    private function find(cb:Callback<FilePath>) {
+        Process.open(
+            'powershell', {
+                args: [ '-command', '(Get-Command haxe.exe).Path' ],
+                stdio : [ Ignore, PipeWrite, Ignore ]
+            },
+            (proc, error) -> {
+                switch error {
+                    case null:
+                        final buffer = Bytes.alloc(8196);
+
+                        proc.stdout.read(buffer, 0, buffer.length, (count, error) -> {
+                            switch error {
+                                case null:
+                                    proc.exitCode((code, error) -> {
+                                        switch error {
+                                            case null:
+                                                proc.close((_, _) -> {
+                                                    if (code == 0) {
+                                                        cb.success(buffer.sub(0, count).toString());
+                                                    } else {
+                                                        cb.fail(new Exception('Non zero exit code $code'));
+                                                    }
+                                                });
+                                            case exn:
+                                                proc.close((_, _) -> {
+                                                    cb.fail(exn);
+                                                });
+                                        }
+                                    });
+                                case exn:
+                                    proc.exitCode((_, _) -> {
+                                        proc.close((_, _) -> {
+                                            cb.fail(exn);
+                                        });
+                                    });
+                            }
+                        });
+                    case exn:
+                        cb.fail(exn);
+                }
+            });
     }
 }

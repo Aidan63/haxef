@@ -7,6 +7,10 @@
     "bar": {
       "version": "1.5.3",
       "path": "${haxelib}/bar/1.5.3",
-      "dependencies": [  ]
+      "dependencies": [ "baz" ]
+    },
+    "haxec": {
+      "version": "4.3.6",
+      "path": "${APPDATA}/haxe/versions/4.3.6"
     }
 }

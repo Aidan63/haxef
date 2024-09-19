@@ -59,7 +59,7 @@ class LibraryResolution {
         cb.success(name);
     }
 
-    static function resolvePath(path:FilePath, cb:Callback<FilePath>) {
+    public static function resolvePath(path:FilePath, cb:Callback<FilePath>) {
         var accumulated:FilePath = null;
         var toSearch = path;
 
