@@ -1,9 +1,14 @@
--cp src
+-p src
 -D analyzer-optimize
 -D HAXE_OUTPUT_FILE=haxef
 -L hxcpp_asys
 -L json2object
 -L hxparse
--main Main
+-L hxargs
+-L hxml
+-D foo="bar baz"
+-D "bar"=foo
+-D "baz"="baz"
+-m Main
 --debug
 --cpp bin

@@ -95,7 +95,7 @@ class Container {
         lockfile.resolve(name, cb);
     }
 
-    public function compiler(cb:Callback<Compiler>) {
+    public function haxec(cb:Callback<Compiler>) {
         switch lockfile['haxec'] {
             case null:
                 switch Sys.getEnv('HAXEC_PATH') {
@@ -122,6 +122,63 @@ class Container {
                 });
         }
     }
+
+    public function compile(arguments:Array<String>, cb:Callback<NoData>) {
+        haxec((compiler, error) -> {
+            if (error != null) {
+                cb.fail(error);
+
+                return;
+            }
+
+            final expanded = [];
+
+            function expandDependency(dependency:Dependency) {
+                expanded.push('-p');
+                expanded.push(dependency.classPath);
+                expanded.push('-D');
+                expanded.push('${dependency.name}=${dependency.version}');
+
+                for (extra in dependency.extraArguments) {
+                    expanded.push(extra);
+                }
+
+                for (transient in dependency.dependencies) {
+                    expandDependency(transient);
+                }
+            }
+
+            function processArguments() {
+                while (arguments.length > 0) {
+                    switch arguments.shift() {
+                        case '-L', '-lib', '--library':
+                            resolve(arguments.shift(), (dependency, error) -> {
+                                if (error != null) {
+                                    cb.fail(error);
+
+                                    return;
+                                }
+
+                                expandDependency(dependency);
+                                processArguments();
+                            });
+
+                            return;
+                        case hxml if (haxe.io.Path.extension(hxml) == 'hxml'):
+                            //
+                        case other:
+                            expanded.push(other);
+                    }
+                }
+
+                trace(expanded);
+
+                cb.success(null);
+            }
+
+            processArguments();
+        });
+	}
 
     private function find(cb:Callback<FilePath>) {
         Process.open(

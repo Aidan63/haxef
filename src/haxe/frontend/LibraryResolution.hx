@@ -1,5 +1,6 @@
 package haxe.frontend;
 
+import hxml.Hxml;
 import json2object.JsonParser;
 import asys.native.IoException;
 import asys.native.filesystem.FileSystem;
@@ -81,7 +82,7 @@ class LibraryResolution {
         replaceVariable(toSearch.name(), replaceResult);
     }
 
-    static function haxelibToDependency(lockfile:LockFile, folder:FilePath, cb:Callback<Dependency>) {
+    static function haxelibToDependency(lockfile:LockFile, name:String, folder:FilePath, cb:Callback<Dependency>) {
         FileSystem.readString(folder.add('haxelib.json'), (data, error) -> {
             switch error {
                 case null:
@@ -93,7 +94,28 @@ class LibraryResolution {
                     function resolveNext() {
                         switch toResolve.shift() {
                             case null:
-                                cb.success(new Dependency(folder.add(json.classPath), json.version, dependencies, ''));
+                                FileSystem.readString(folder.add('extraParams.hxml'), (data, error) -> {
+                                    switch error {
+                                        case null:
+                                            switch Hxml.parse(data).sets {
+                                                case [ set ]:
+                                                    final extra = set.lines.flatMap(line -> switch line {
+                                                        case Flag(flag):
+                                                            [ flag ];
+                                                        case Command(flag, parameter):
+                                                            [ flag, parameter ];
+                                                        case _:
+                                                            [];
+                                                    });
+
+                                                    cb.success(new Dependency(name, json.version, folder, folder.add(json.classPath), dependencies, extra));
+                                                case _:
+                                                    cb.fail(new Exception('Failed to parse extra params'));
+                                            }
+                                        case exn:
+                                            cb.success(new Dependency(name, json.version, folder, folder.add(json.classPath), dependencies, []));
+                                    }
+                                });
                             case next:
                                 resolve(lockfile, next, (dependency, error) -> {
                                     switch error {
@@ -124,13 +146,13 @@ class LibraryResolution {
         FileSystem.readString(haxelib.add(name).add('.dev'), (devPath, error) -> {
             switch error {
                 case null:
-                    haxelibToDependency(lockfile, devPath, cb);
+                    haxelibToDependency(lockfile, name, devPath, cb);
                 case exn:
                     if (Std.isOfType(exn, IoException) && (cast exn:IoException).type.match(FileNotFound)) {
                         FileSystem.readString(haxelib.add(name).add('.current'), (currentVersion, error) -> {
                             switch error {
                                 case null:
-                                    haxelibToDependency(lockfile, haxelib.add(name).add(currentVersion), cb);
+                                    haxelibToDependency(lockfile, name, haxelib.add(name).add(currentVersion), cb);
                                 case exn:
                                     if (Std.isOfType(exn, IoException) && (cast exn:IoException).type.match(FileNotFound)) {
                                         cb.fail(new Exception('Failed to find .dev or .current file for "$name" haxelib', exn));
@@ -167,7 +189,7 @@ class LibraryResolution {
                             function resolveNext() {
                                 switch toResolve.shift() {
                                     case null:
-                                        cb.success(new Dependency(path, found.version, dependencies, ''));
+                                        cb.success(new Dependency(name, found.version, path, path, dependencies, []));
                                     case next:
                                         resolve(lockfile, next, (dependency, error) -> {
                                             switch error {
