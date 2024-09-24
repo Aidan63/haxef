@@ -171,9 +171,21 @@ class Container {
                     }
                 }
 
-                trace(expanded);
-
-                cb.success(null);
+                Process.open(
+                    compiler.path.add('haxe'),
+                    { env: [ 'HAXE_STD_PATH' => compiler.path.add('std') ], args: expanded, stdio: [ Ignore, Inherit, Inherit ] },
+                    (proc, error) -> {
+                    switch error {
+                        case null:
+                            proc.exitCode((code, error) -> {
+                                proc.close((_, _) -> {
+                                    cb.success(null);
+                                });
+                            });
+                        case exn:
+                            cb.fail(exn);
+                    }
+                });
             }
 
             processArguments();

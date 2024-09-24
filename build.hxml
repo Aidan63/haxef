@@ -6,9 +6,6 @@
 -L hxparse
 -L hxargs
 -L hxml
--D foo="bar baz"
--D "bar"=foo
--D "baz"="baz"
--m Main
+-m haxe.cli.Main
 --debug
 --cpp bin

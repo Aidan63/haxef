@@ -1,17 +1,21 @@
 package haxe.cli;
 
-import haxe.io.Path;
-import hxml.Hxml;
+import haxe.io.Bytes;
+import asys.native.system.Process;
+import haxe.frontend.Container;
+import asys.native.filesystem.FilePath;
 import hxargs.Args;
 
 using StringTools;
 using Lambda;
 
 function main() {
+    var lockFile  = null;
+
     final collected = [];
     final handler   = Args.generate([
         [ '--lock-file' ] => (path:String) -> {
-            trace('lock file at $path');
+            lockFile = FilePath.ofString(path);
         },
 
         _ => (arg:String) -> {
@@ -21,23 +25,24 @@ function main() {
 
     switch Sys.args() {
         case []:
-            trace('help');
+            trace('todo: help');
         case input:
             handler.parse(input);
 
-            while (collected.length > 0) {
-                switch collected.shift() {
-                    case '-L', '-lib', '--library':
-                        //
-                    case hxml if (Path.extension(hxml) == 'hxml'):
-                        //
-                    case other:
-                        //
+            Container.populate(Sys.getCwd(), lockFile, (container, error) -> {
+                switch error {
+                    case null:   
+                        container.compile(collected, (_, error) -> {
+                            switch error {
+                                case null:
+                                    Sys.exit(0);
+                                case exn:
+                                    throw exn;
+                            }
+                        });
+                    case exn:
+                        throw exn;
                 }
-            }
-
-            final hxml = Hxml.parse(collected.join(' '));
-
-            trace(hxml.sets);
+            });
     }
 }
