@@ -37,11 +37,19 @@ function main() {
                                 case null:
                                     Sys.exit(0);
                                 case exn:
-                                    throw exn;
+                                    final bytes = Bytes.ofString(exn.message);
+
+                                    Process.current.stdout.write(bytes, 0, bytes.length, (_, error) -> {
+                                        Sys.exit(1);
+                                    });
                             }
                         });
                     case exn:
-                        throw exn;
+                        final bytes = Bytes.ofString(exn.message);
+
+                        Process.current.stdout.write(bytes, 0, bytes.length, (_, error) -> {
+                            Sys.exit(1);
+                        });
                 }
             });
     }

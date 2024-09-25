@@ -1,5 +1,8 @@
 package haxe.frontend;
 
+import hxml.ds.BuildFiles;
+import hxml.ds.BuildSet;
+import hxml.Hxml;
 import haxe.io.Bytes;
 import json2object.JsonParser;
 import asys.native.filesystem.FileSystem;
@@ -91,8 +94,13 @@ class Container {
         this.lockfile = lockfile;
     }
 
-    public function resolve(name:String, cb:Callback<Dependency>) {
-        lockfile.resolve(name, cb);
+    public function library(name:String, cb:Callback<Dependency>) {
+        switch name {
+            case 'haxec':
+                cb.fail(new Exception('"haxec" is a special library reserved for compiler'));
+            case _:
+                lockfile.resolve(name, cb);
+        }
     }
 
     public function haxec(cb:Callback<Compiler>) {
@@ -148,11 +156,84 @@ class Container {
                 }
             }
 
+            function isLibraryFlag(flag:String) {
+                if (flag == '-L') {
+                    return true;
+                }
+                if (flag == '--lib') {
+                    return true;
+                }
+                if (flag == '--library') {
+                    return true;
+                }
+
+                return false;
+            }
+
+            function addHxml(path:String, cb:Callback<NoData>) {
+                FileSystem.readString(path, (data, error) -> {
+                    if (error != null) {
+                        cb.fail(error);
+
+                        return;
+                    }
+
+                    switch Hxml.parse(data).sets {
+                        case [ set ]:
+
+                            function processSet() {
+                                while (set.lines.length > 0) {
+                                    switch set.lines.shift() {
+                                        case Flag(flag):
+                                            expanded.push(flag);
+                                        case Command(flag, lib) if (isLibraryFlag(flag)):
+                                            library(lib, (dependency, error) -> {
+                                                if (error != null) {
+                                                    cb.fail(error);
+                
+                                                    return;
+                                                }
+                
+                                                expandDependency(dependency);
+                                                processSet();
+                                            });
+
+                                            return;
+                                        case Command(flag, parameter):
+                                            expanded.push(flag);
+                                            expanded.push(parameter);
+                                        case HxmlFile(path):
+                                            addHxml(path, (_, error) -> {
+                                                if (error != null) {
+                                                    cb.fail(error);
+
+                                                    return;
+                                                }
+
+                                                processSet();
+                                            });
+
+                                            return;
+                                        case _:
+                                            throw new Exception("Invalid hxml contents");
+                                    }
+                                }
+
+                                cb.success(null);
+                            }
+
+                            processSet();
+                        case _:
+                            throw new Exception("Invalid hxml contents");
+                    }
+                });
+            }
+
             function processArguments() {
                 while (arguments.length > 0) {
                     switch arguments.shift() {
-                        case '-L', '-lib', '--library':
-                            resolve(arguments.shift(), (dependency, error) -> {
+                        case flag if (isLibraryFlag(flag)):
+                            library(arguments.shift(), (dependency, error) -> {
                                 if (error != null) {
                                     cb.fail(error);
 
@@ -165,11 +246,23 @@ class Container {
 
                             return;
                         case hxml if (haxe.io.Path.extension(hxml) == 'hxml'):
-                            //
+                            addHxml(hxml, (_, error) -> {
+                                if (error != null) {
+                                    cb.fail(error);
+
+                                    return;
+                                }
+
+                                processArguments();
+                            });
+
+                            return;
                         case other:
                             expanded.push(other);
                     }
                 }
+
+                trace(expanded);
 
                 Process.open(
                     compiler.path.add('haxe'),
@@ -192,7 +285,7 @@ class Container {
         });
 	}
 
-    private function find(cb:Callback<FilePath>) {
+    function find(cb:Callback<FilePath>) {
         Process.open(
             'powershell', {
                 args: [ '-command', '(Get-Command haxe.exe).Path' ],
