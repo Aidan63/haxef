@@ -1,5 +1,6 @@
 package haxe.frontend;
 
+import cpp.asys.FilePathExtras;
 import hxml.Hxml;
 import json2object.JsonParser;
 import asys.native.IoException;
@@ -60,19 +61,23 @@ class LibraryResolution {
         cb.success(name);
     }
 
-    public static function resolvePath(path:FilePath, cb:Callback<FilePath>) {
+    public static function resolvePath(src:FilePath, cb:Callback<FilePath>) {
         var accumulated:FilePath = null;
-        var toSearch = path;
+        var toSearch = src;
 
         function replaceResult(path:FilePath, error:Exception) {
             switch error {
                 case null:
                     accumulated = path.add(accumulated);
 
-                    if ('' != (toSearch = toSearch.parent())) {
+                    if ('' != path && '' != (toSearch = toSearch.parent())) {
                         replaceVariable(toSearch.name(), replaceResult);
                     } else {
-                        cb.success(accumulated);
+                        if (src.isAbsolute()) {
+                            cb.success(FilePath.ofString(FilePathExtras.getRootName(src) + FilePathExtras.getRootDirectory(src)).add(accumulated));
+                        } else {
+                            cb.success(accumulated);
+                        }
                     }
                 case exn:
                     cb.fail(exn);
@@ -162,6 +167,7 @@ class LibraryResolution {
                             }
                         });
                     } else {
+                        trace('failed...');
                         cb.fail(exn);
                     }
             }
