@@ -1,4 +1,5 @@
--p src
+-p lib/src
+-p cli/src
 -D analyzer-optimize
 -D HAXE_OUTPUT_FILE=haxef
 -L hxcpp_asys
@@ -6,6 +7,6 @@
 -L hxparse
 -L hxargs
 -L hxml
--m haxe.cli.Main
---debug
+-m Main
+--dce full
 --cpp bin

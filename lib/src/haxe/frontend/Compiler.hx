@@ -1,10 +1,8 @@
 package haxe.frontend;
 
-import haxe.io.Path;
-import asys.native.system.Process;
 import asys.native.filesystem.FilePath;
 import haxe.ds.Option;
-import haxe.parsers.Version;
+import haxe.frontend.parsers.Version;
 
 class Compiler {
     public final version : Option<Version>;

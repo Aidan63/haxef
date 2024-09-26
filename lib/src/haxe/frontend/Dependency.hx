@@ -1,6 +1,6 @@
 package haxe.frontend;
 
-import haxe.parsers.Version;
+import haxe.frontend.parsers.Version;
 import asys.native.filesystem.FilePath;
 
 class Dependency {

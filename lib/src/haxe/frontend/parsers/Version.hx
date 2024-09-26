@@ -1,4 +1,4 @@
-package haxe.parsers;
+package haxe.frontend.parsers;
 
 import hxparse.ParserBuilder;
 import byte.ByteData;

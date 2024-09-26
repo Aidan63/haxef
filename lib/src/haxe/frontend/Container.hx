@@ -262,8 +262,6 @@ class Container {
                     }
                 }
 
-                trace(expanded);
-
                 Process.open(
                     compiler.path.add('haxe'),
                     { env: [ 'HAXE_STD_PATH' => compiler.path.add('std') ], args: expanded, stdio: [ Ignore, Inherit, Inherit ] },

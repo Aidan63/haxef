@@ -1,16 +1,41 @@
 {
-    "foo": {
-      "version": "1.5.3",
-      "path": "${haxelib}/foo/1.5.3",
-      "dependencies": ["bar"]
+    "hxargs": {
+      "version": "3.0.2",
+      "path": "${APPDATA}/haxe/haxe_libraries/hxargs/3.0.2/github/1d8ec84f641833edd6f0cb2e4290b7524fd27219",
+      "dependencies": []
     },
-    "bar": {
-      "version": "1.5.3",
-      "path": "${haxelib}/bar/1.5.3",
-      "dependencies": [ "baz" ]
+    "hxcpp": {
+      "version": "4.3.2",
+      "path": "${APPDATA}/haxe/haxe_libraries/hxcpp/4.3.0/github/0dffc2abcb75dc817d75bc1eecd828501e5141de/",
+      "dependencies": []
+    },
+    "hxcpp_asys": {
+      "version": "1.0.0",
+      "path": "${APPDATA}/haxe/haxe_libraries/hxcpp_asys/0.0.1/github/4eee968fe85d76165f04125c8a35c6edb6e5449f/src",
+      "dependencies": []
+    },
+    "hxjsonast": {
+      "version": "1.1.0",
+      "path": "${APPDATA}/haxe/haxe_libraries/hxjsonast/1.1.0/haxelib/src",
+      "dependencies": []
+    },
+    "hxparse": {
+      "version": "4.3.0",
+      "path": "${APPDATA}/haxe/haxe_libraries/hxparse/4.3.0/github/876070ec62a4869de60081f87763e23457a3bda8/src",
+      "dependencies":[]
+    },
+    "json2object": {
+      "version":"3.11.0",
+      "path": "D:/programming/haxe/json2object/src",
+      "dependencies": ["hxjsonast"]
+    },
+    "hxml": {
+      "version": "0.1.0",
+      "path": "${APPDATA}/haxe/haxe_libraries/hxml/0.1.0/github/fae3eccdbfe4a3cca9b9790d3ebb61e0a7220082/lib",
+      "dependencies": []
     },
     "haxec": {
       "version": "4.3.6",
-      "path": "${APPDATA}/haxe/versions/4.3.6"
+      "path": "${APPDATA}/haxe/versions/32d9b9b"
     }
 }

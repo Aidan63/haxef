@@ -1,7 +1,7 @@
 package haxe.frontend;
 
 import asys.native.filesystem.FilePath;
-import haxe.parsers.Version;
+import haxe.frontend.parsers.Version;
 
 typedef LockFile = Map<String, Library>;
 

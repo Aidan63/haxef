@@ -1,5 +1,3 @@
-package haxe.cli;
-
 import haxe.io.Bytes;
 import asys.native.system.Process;
 import haxe.frontend.Container;

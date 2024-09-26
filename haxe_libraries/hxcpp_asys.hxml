@@ -1,2 +1,3 @@
--D hxcp_asys=1.0.0
--cp D:/programming/haxe/hxcpp_asys/src
+# @install: lix --silent download "gh://github.com/aidan63/hxcpp_asys#4eee968fe85d76165f04125c8a35c6edb6e5449f" into hxcpp_asys/0.0.1/github/4eee968fe85d76165f04125c8a35c6edb6e5449f
+-cp ${HAXE_LIBCACHE}/hxcpp_asys/0.0.1/github/4eee968fe85d76165f04125c8a35c6edb6e5449f/src
+-D hxcpp_asys=0.0.1
