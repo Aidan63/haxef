@@ -10,3 +10,4 @@
 -m Main
 --dce full
 --cpp bin
+--debug

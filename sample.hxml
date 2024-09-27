@@ -1,0 +1,19 @@
+--class-path demo
+--dce full
+--main Main
+
+--each
+
+--js demo/bin/demo.js
+
+--next
+
+--neko demo/bin/demo.n
+
+--next
+
+--hl demo/bin/demo.hl
+
+--next
+
+--interp

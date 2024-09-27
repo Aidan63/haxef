@@ -1,5 +1,6 @@
 package haxe.frontend;
 
+import hxml.ds.Line;
 import haxe.frontend.parsers.Version;
 import asys.native.filesystem.FilePath;
 
@@ -21,7 +22,7 @@ class Dependency {
 
     public final dependencies:Array<Dependency>;
 
-    public final extraArguments:Array<String>;
+    public final extraArguments:Array<Line>;
 
 	public function new(name, version, directory, classPath, dependencies, extraArguments) {
         this.name           = name;

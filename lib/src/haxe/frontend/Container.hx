@@ -10,7 +10,10 @@ import asys.native.filesystem.FilePath;
 import asys.native.system.Process;
 import haxe.frontend.LockFile;
 
+using Lambda;
 using haxe.frontend.LibraryResolution;
+
+private typedef CompilationUnit = Array<String>;
 
 class Container {
     static final parser = new JsonParser<LockFile>();
@@ -139,94 +142,14 @@ class Container {
                 return;
             }
 
-            final expanded = [];
+            final builds: Array<CompilationUnit> = [];
 
-            function expandDependency(dependency:Dependency) {
-                expanded.push('-p');
-                expanded.push(dependency.classPath);
-                expanded.push('-D');
-                expanded.push('${dependency.name}=${dependency.version}');
-
-                for (extra in dependency.extraArguments) {
-                    expanded.push(extra);
+            function latest() {
+                if (builds.length == 0) {
+                    return builds[0] = [];
                 }
 
-                for (transient in dependency.dependencies) {
-                    expandDependency(transient);
-                }
-            }
-
-            function isLibraryFlag(flag:String) {
-                if (flag == '-L') {
-                    return true;
-                }
-                if (flag == '--lib') {
-                    return true;
-                }
-                if (flag == '--library') {
-                    return true;
-                }
-
-                return false;
-            }
-
-            function addHxml(path:String, cb:Callback<NoData>) {
-                FileSystem.readString(path, (data, error) -> {
-                    if (error != null) {
-                        cb.fail(error);
-
-                        return;
-                    }
-
-                    switch Hxml.parse(data).sets {
-                        case [ set ]:
-
-                            function processSet() {
-                                while (set.lines.length > 0) {
-                                    switch set.lines.shift() {
-                                        case Flag(flag):
-                                            expanded.push(flag);
-                                        case Command(flag, lib) if (isLibraryFlag(flag)):
-                                            library(lib, (dependency, error) -> {
-                                                if (error != null) {
-                                                    cb.fail(error);
-                
-                                                    return;
-                                                }
-                
-                                                expandDependency(dependency);
-                                                processSet();
-                                            });
-
-                                            return;
-                                        case Command(flag, parameter):
-                                            expanded.push(flag);
-                                            expanded.push(parameter);
-                                        case HxmlFile(path):
-                                            addHxml(path, (_, error) -> {
-                                                if (error != null) {
-                                                    cb.fail(error);
-
-                                                    return;
-                                                }
-
-                                                processSet();
-                                            });
-
-                                            return;
-                                        case _:
-                                            throw new Exception("Invalid hxml contents");
-                                    }
-                                }
-
-                                cb.success(null);
-                            }
-
-                            processSet();
-                        case _:
-                            throw new Exception("Invalid hxml contents");
-                    }
-                });
+                return builds[builds.length - 1];
             }
 
             function processArguments() {
@@ -240,17 +163,77 @@ class Container {
                                     return;
                                 }
 
-                                expandDependency(dependency);
+                                final array = latest();
+
+                                function expand(d:Dependency) {
+                                    array.push('-p');
+                                    array.push(d.classPath);
+                                    array.push('-D');
+                                    array.push('${d.name}=${d.version}');
+
+                                    for (extra in d.extraArguments) {
+                                        switch extra {
+                                            case Flag(flag):
+                                                array.push(flag);
+                                            case Command(flag, parameter):
+                                                array.push(flag);
+                                                array.push(parameter);
+                                            case _:
+                                                cb.fail(new Exception('Invalid hxml element in extra parameters'));
+
+                                                return;
+                                        }
+                                    }
+
+                                    for (transient in d.dependencies) {
+                                        expand(d);
+                                    }
+                                }
+
+                                expand(dependency);
                                 processArguments();
                             });
 
                             return;
                         case hxml if (haxe.io.Path.extension(hxml) == 'hxml'):
-                            addHxml(hxml, (_, error) -> {
+                            resolveHxml(hxml, (sets, error) -> {
                                 if (error != null) {
                                     cb.fail(error);
 
                                     return;
+                                }
+
+                                switch sets {
+                                    case [ single ]:
+                                        final array = latest();
+                                        for (line in single.lines) {
+                                            switch line {
+                                                case Flag(flag):
+                                                    array.push(flag);
+                                                case Command(flag, parameter):
+                                                    array.push(flag);
+                                                    array.push(parameter);
+                                                case _:
+                                                    cb.fail(new Exception('Invalid hxml element in expanded hxml'));
+
+                                                    return;
+                                            }
+                                        }
+                                    case many:
+                                        for (set in many) {
+                                            final args = set.lines.map(line -> {
+                                                return switch line {
+                                                    case Flag(flag):
+                                                        [ flag ];
+                                                    case Command(flag, parameter):
+                                                        [ flag, parameter ];
+                                                    case _:
+                                                        throw new Exception('Invalid hxml element in expanded hxml');
+                                                }
+                                            }).flatten();
+
+                                            builds.push(args);
+                                        }
                                 }
 
                                 processArguments();
@@ -258,30 +241,151 @@ class Container {
 
                             return;
                         case other:
-                            expanded.push(other);
+                            latest().push(other);
                     }
                 }
 
-                Process.open(
-                    compiler.path.add('haxe'),
-                    { env: [ 'HAXE_STD_PATH' => compiler.path.add('std') ], args: expanded, stdio: [ Ignore, Inherit, Inherit ] },
-                    (proc, error) -> {
-                    switch error {
+                function build() {
+                    switch builds.shift() {
                         case null:
-                            proc.exitCode((code, error) -> {
-                                proc.close((_, _) -> {
-                                    cb.success(null);
-                                });
+                            cb.success(null);
+                        case args:
+                            Process.open(
+                                compiler.path.add('haxe'),
+                                { env: [ 'HAXE_STD_PATH' => compiler.path.add('std') ], args: args, stdio: [ Ignore, Inherit, Inherit ] },
+                                (proc, error) -> {
+                                switch error {
+                                    case null:
+                                        proc.exitCode((code, error) -> {
+                                            proc.close((_, _) -> {
+                                                switch code {
+                                                    case 0:
+                                                        build();
+                                                    case errno:
+                                                        cb.fail(new Exception('Compilation resulted in a non zero exit code'));
+                                                }
+                                            });
+                                        });
+                                    case exn:
+                                        cb.fail(exn);
+                                }
                             });
-                        case exn:
-                            cb.fail(exn);
                     }
-                });
+                }
+
+                build();
             }
 
             processArguments();
         });
 	}
+
+    function isLibraryFlag(flag:String) {
+        if (flag == '-L') {
+            return true;
+        }
+        if (flag == '--lib') {
+            return true;
+        }
+        if (flag == '--library') {
+            return true;
+        }
+
+        return false;
+    }
+
+    function resolveHxml(path:FilePath, cb:Callback<Array<BuildSet>>) {
+        FileSystem.readString(path, (data, error) -> {
+            switch error {
+                case null:
+                    final hxml = Hxml.parse(data);
+                    final sets = [];
+
+                    function process() {
+                        if (hxml.sets.length == 0) {
+                            cb.success(sets);
+
+                            return;
+                        }
+
+                        resolveBuildSet(hxml.sets.shift(), [], (build, error) -> {
+                            switch error {
+                                case null:
+                                    sets.push(build);
+
+                                    process();
+                                case exn:
+                                    cb.fail(exn);
+                            }
+                        });
+                    }
+
+                    process();
+                case exn:
+                    cb.fail(exn);
+            }
+        });
+    }
+
+    function expandDependency(dependency:Dependency, lines:Array<hxml.ds.Line>) {
+        lines.push(Command('-p', dependency.classPath));
+        lines.push(Command('-D', '${dependency.name}=${dependency.version}'));
+
+        for (extra in dependency.extraArguments) {
+            lines.push(extra);
+        }
+
+        for (transient in dependency.dependencies) {
+            expandDependency(transient, lines);
+        }
+    }
+
+    function resolveBuildSet(set:BuildSet, lines:Array<hxml.ds.Line>, cb:Callback<BuildSet>) {
+        while (set.lines.length > 0) {
+            switch set.lines.shift() {
+                case Flag(flag):
+                    lines.push(Flag(flag));
+                case Command(flag, lib) if (isLibraryFlag(flag)):
+                    library(lib, (dependency, error) -> {
+                        if (error != null) {
+                            cb.fail(error);
+
+                            return;
+                        }
+
+                        expandDependency(dependency, lines);
+                        resolveBuildSet(set, lines, cb);
+                    });
+                case Command(flag, parameter):
+                    lines.push(Command(flag, parameter));
+                case HxmlFile(path):
+                    resolveHxml(path, (sets, error) -> {
+                        if (error != null) {
+                            cb.fail(error);
+
+                            return;
+                        }
+
+                        switch sets {
+                            case [ set ]:
+                                for (line in set.lines) {
+                                    lines.push(line);
+                                }
+
+                                resolveBuildSet(set, lines, cb);
+                            case _:
+                                cb.fail(new Exception("Inner hxml file contained multiple build sets"));
+                        }
+                    });
+                case _:
+                    cb.fail(new Exception("Unexpected hxml line"));
+
+                    return;
+            }
+        }
+
+        cb.success({ lines: lines, index: 0, source: '' });
+    }
 
     function find(cb:Callback<FilePath>) {
         Process.open(

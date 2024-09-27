@@ -104,16 +104,7 @@ class LibraryResolution {
                                         case null:
                                             switch Hxml.parse(data).sets {
                                                 case [ set ]:
-                                                    final extra = set.lines.flatMap(line -> switch line {
-                                                        case Flag(flag):
-                                                            [ flag ];
-                                                        case Command(flag, parameter):
-                                                            [ flag, parameter ];
-                                                        case _:
-                                                            [];
-                                                    });
-
-                                                    cb.success(new Dependency(name, json.version, folder, folder.add(json.classPath), dependencies, extra));
+                                                    cb.success(new Dependency(name, json.version, folder, folder.add(json.classPath), dependencies, set.lines));
                                                 case _:
                                                     cb.fail(new Exception('Failed to parse extra params'));
                                             }
